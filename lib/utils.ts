@@ -8,6 +8,16 @@ export interface TimeEntry {
   break_mins: number
 }
 
+export interface Absence {
+  id: string
+  user_id: string
+  start_date: string
+  end_date: string
+  kind: 'vacation' | 'sick'
+  hours_per_day: number
+  note: string | null
+}
+
 export function durationHours(start: string, end: string, breakMins = 0) {
   const [sh, sm] = start.split(':').map(Number)
   const [eh, em] = end.split(':').map(Number)
@@ -26,10 +36,10 @@ export function getWeekBounds(dateStr: string) {
   const toMon = day === 0 ? -6 : 1 - day
   const mon = new Date(d)
   mon.setDate(d.getDate() + toMon)
-  const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 6)
+  const fri = new Date(mon)
+  fri.setDate(mon.getDate() + 4)
   const fmt = (dt: Date) => dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-  return { key: mon.toISOString().slice(0, 10), label: `${fmt(mon)} – ${fmt(sun)}` }
+  return { key: mon.toISOString().slice(0, 10), label: `${fmt(mon)} – ${fmt(fri)}` }
 }
 
 export function formatDate(dateStr: string) {
