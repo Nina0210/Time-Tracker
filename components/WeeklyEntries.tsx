@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Absence, TimeEntry, durationHours, formatHours, formatDate, getWeekBounds, todayStr } from '@/lib/utils'
+import { Absence, OvertimeReductionPlan, TimeEntry, durationHours, formatHours, formatDate, getWeekBounds, todayStr } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   entries: TimeEntry[]
   absences: Absence[]
+  plans: OvertimeReductionPlan[]
   weeklyTarget: number
   usualWorkdays: number[]
   onEdit: (entry: TimeEntry) => void
@@ -56,7 +57,7 @@ function distributeHours(total: number, days: number) {
   })
 }
 
-export default function WeeklyEntries({ entries, absences, weeklyTarget, usualWorkdays, onEdit, onEditAbsence, onRefresh }: Props) {
+export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, usualWorkdays, onEdit, onEditAbsence, onRefresh }: Props) {
   const currentWeekKey = getWeekBounds(todayStr()).key
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [logDate, setLogDate] = useState<string | null>(null)
@@ -315,8 +316,9 @@ export default function WeeklyEntries({ entries, absences, weeklyTarget, usualWo
                 {week.workdays.flatMap(date => {
                   const dayEntries = week.entries.filter(entry => entry.date === date)
                   const dayAbsence = absences.find(absence => absence.start_date <= date && absence.end_date >= date)
+                  const dayPlans = plans.filter(plan => plan.planned_date === date)
 
-                  if (!dayEntries.length && !dayAbsence) {
+                  if (!dayEntries.length && !dayAbsence && !dayPlans.length) {
                     return [
                       <div key={date} className="flex items-center justify-between px-5 py-2.5 border-b border-gray-50 last:border-0">
                         <span className="text-xs text-gray-400 w-24">{formatDate(date)}</span>
@@ -332,6 +334,7 @@ export default function WeeklyEntries({ entries, absences, weeklyTarget, usualWo
                   }
 
                   return [
+                    ...dayPlans.map(plan => <div key={`plan-${plan.id}`} className="flex items-center justify-between border-b border-gray-50 bg-indigo-50/40 px-5 py-2.5"><div className="flex items-center gap-3"><span className="w-24 text-xs text-gray-400">{formatDate(date)}</span><span className="text-sm font-medium text-indigo-700">{plan.time_taken ? 'Overtime time taken' : 'Planned overtime reduction'}</span><span className="text-xs text-indigo-500">{formatHours(Number(plan.hours))}</span>{plan.note && <span className="text-xs italic text-gray-400">{plan.note}</span>}</div><span className="text-xs text-gray-400">{plan.time_taken ? 'Taken' : 'Planned'}</span></div>),
                     ...(dayAbsence ? [
                       <div key={`${date}-absence`} className="flex items-center justify-between border-b border-gray-50 bg-amber-50/50 px-5 py-2.5">
                         <div className="flex items-center gap-3"><span className="w-24 text-xs text-gray-400">{formatDate(date)}</span><span className="text-sm font-medium text-amber-700">{dayAbsence.kind === 'vacation' ? 'Vacation' : 'Sick leave'}</span><span className="text-xs text-amber-600">{formatHours(Number(dayAbsence.hours_per_day))} credited</span>{dayAbsence.note && <span className="text-xs italic text-gray-400">{dayAbsence.note}</span>}</div>

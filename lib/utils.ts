@@ -18,6 +18,15 @@ export interface Absence {
   note: string | null
 }
 
+export interface OvertimeReductionPlan {
+  id: string
+  user_id: string
+  planned_date: string
+  hours: number
+  note: string | null
+  time_taken: boolean
+}
+
 export function durationHours(start: string, end: string, breakMins = 0) {
   const [sh, sm] = start.split(':').map(Number)
   const [eh, em] = end.split(':').map(Number)

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Absence, TimeEntry } from '@/lib/utils'
+import { Absence, OvertimeReductionPlan, TimeEntry } from '@/lib/utils'
 import WeeklyEntries from '@/components/WeeklyEntries'
 import EditModal from '@/components/EditModal'
 import TargetBar from '@/components/TargetBar'
@@ -21,16 +21,19 @@ export default function DashboardPage() {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null)
   const [absences, setAbsences] = useState<Absence[]>([])
   const [editAbsence, setEditAbsence] = useState<Absence | null>(null)
+  const [plans, setPlans] = useState<OvertimeReductionPlan[]>([])
   const router = useRouter()
   const supabase = createClient()
 
   const loadEntries = useCallback(async () => {
-    const [entriesResult, absencesResult] = await Promise.all([
+    const [entriesResult, absencesResult, plansResult] = await Promise.all([
       supabase.from('time_entries').select('*').order('date', { ascending: false }).order('start_time', { ascending: false }),
       supabase.from('absences').select('*').order('start_date', { ascending: false }),
+      supabase.from('overtime_reduction_plans').select('*').order('planned_date', { ascending: true }),
     ])
     if (entriesResult.data) setEntries(entriesResult.data)
     if (absencesResult.data) setAbsences(absencesResult.data)
+    if (plansResult.data) setPlans(plansResult.data)
   }, [supabase])
 
   useEffect(() => {
@@ -64,11 +67,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <OvertimeBalance entries={entries} absences={absences} weeklyTarget={weeklyTarget} />
+      <OvertimeBalance entries={entries} absences={absences} plans={plans} weeklyTarget={weeklyTarget} onRefresh={loadEntries} />
       {settingsLoaded && <TargetBar initialTarget={weeklyTarget} initialWorkdays={usualWorkdays} onChanged={(target, workdays) => { setWeeklyTarget(target); setUsualWorkdays(workdays) }} onWorkdaysChanged={setUsualWorkdays} />}
       <WeeklyEntries
         entries={entries}
         absences={absences}
+        plans={plans}
         weeklyTarget={weeklyTarget}
         usualWorkdays={usualWorkdays}
         onEdit={setEditEntry}
