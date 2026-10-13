@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { Absence, OvertimeReductionPlan, TimeEntry, durationHours, formatHours, formatDate, getWeekBounds, todayStr } from '@/lib/utils'
+import OvertimeReductionForm from './OvertimeReductionForm'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -67,6 +68,7 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
   const [lunch, setLunch] = useState(true)
   const [logError, setLogError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [reductionDate, setReductionDate] = useState<string | null>(null)
   const [absenceDate, setAbsenceDate] = useState<string | null>(null)
   const [absenceKind, setAbsenceKind] = useState<Absence['kind']>('vacation')
   const [absenceHours, setAbsenceHours] = useState('')
@@ -84,7 +86,7 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
     total: 0,
   }
 
-  const visibleDates = [...entries.map(entry => entry.date), ...absences.map(absence => absence.start_date)]
+  const visibleDates = [...entries.map(entry => entry.date), ...absences.map(absence => absence.start_date), ...plans.map(plan => plan.planned_date)]
   if (visibleDates.length) {
     const earliestEntryDate = [...visibleDates].sort()[0]
     const currentMonday = getWorkdays(todayStr())[0]
@@ -128,6 +130,7 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
   }
 
   function openLogForm(date: string) {
+    setReductionDate(null)
     setAbsenceDate(null)
     setLogDate(date)
     setStart('')
@@ -139,6 +142,7 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
 
   function openAbsenceForm(date: string, kind: Absence['kind']) {
     if (!usualWorkdays.includes(new Date(`${date}T00:00:00`).getDay())) return
+    setReductionDate(null)
     setLogDate(null)
     setAbsenceDate(date)
     setAbsenceKind(kind)
@@ -281,6 +285,14 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
     ]
   }
 
+  function reductionAction(date: string) {
+    return <button onClick={() => { setLogDate(null); setAbsenceDate(null); setReductionDate(date) }} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">Overtime reduction</button>
+  }
+
+  function renderReductionForm(date: string) {
+    return reductionDate === date ? [<OvertimeReductionForm key={`${date}-reduction`} initialDate={date} defaultHours={weeklyTarget > 0 ? weeklyTarget / usualWorkdays.length : 7} onClose={() => setReductionDate(null)} onSaved={onRefresh} />] : []
+  }
+
   function absenceActions(date: string) {
     return <div className="flex items-center gap-2"><button onClick={() => openAbsenceForm(date, 'vacation')} className="text-xs font-medium text-amber-600 hover:text-amber-800">Vacation</button><button onClick={() => openAbsenceForm(date, 'sick')} className="text-xs font-medium text-rose-500 hover:text-rose-700">Sick</button></div>
   }
@@ -326,10 +338,12 @@ export default function WeeklyEntries({ entries, absences, plans, weeklyTarget, 
                           <span className="text-sm text-gray-300">No time logged</span>
                           <button onClick={() => openLogForm(date)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">+ Time</button>
                           {usualWorkdays.includes(new Date(`${date}T00:00:00`).getDay()) && absenceActions(date)}
+                          {usualWorkdays.includes(new Date(`${date}T00:00:00`).getDay()) && reductionAction(date)}
                         </div>
                       </div>,
                       ...renderLogForm(date),
                       ...renderAbsenceForm(date),
+                      ...renderReductionForm(date),
                     ]
                   }
 
